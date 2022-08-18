@@ -1,4 +1,4 @@
-from torch.nn import Module, Sequential, Conv2d, MaxPool2d, Dropout2d, ReLU, Flatten, Linear, BatchNorm2d, AvgPool2d
+from torch.nn import Module, Sequential, Conv2d, MaxPool2d, Dropout2d, ReLU, Flatten, Linear, BatchNorm2d, AvgPool2d, Sigmoid, Tanh
 from ActiveShiftLayer import ASL, Convolution
 
 
@@ -61,18 +61,41 @@ class CSC_block(Module):
         output_size = input_size
         expanded_size = int(input_size * expansion_rate)
 
-        self.NN = Sequential(BatchNorm2d(input_size),
-                             ReLU(),
-                             Conv2d(input_size, expanded_size, 1),
-                             BatchNorm2d(expanded_size),
-                             ReLU(),
-                             ASL(expanded_size, device),
-                             Conv2d(expanded_size, output_size, 1)
-                             )
+        self.NN = Sequential(  # BatchNorm2d(input_size),
+            # ReLU(),
+            Conv2d(input_size, expanded_size, 1),
+            BatchNorm2d(expanded_size),
+            ReLU(),
+            ASL(expanded_size, device),
+            Conv2d(expanded_size, output_size, 1)
+        )
 
     def forward(self, x):
         post_block = self.NN.forward(x)
         return post_block + x
+
+
+class Depth_wise_block(Module):
+    '''Depthwise-Convolution'''
+
+    def __init__(self, input_size, kernel_size, padding, k=1, device="cpu"):
+        '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
+        super().__init__()
+
+        output_size = input_size
+        expanded_size = int(input_size * k)
+
+        self.NN = Sequential(
+            Conv2d(input_size, expanded_size, 1),
+            BatchNorm2d(expanded_size),
+            ReLU(),
+            Conv2d(expanded_size, expanded_size, kernel_size,
+                   padding=padding, groups=expanded_size),
+            Conv2d(expanded_size, output_size, 1)
+        )
+
+    def forward(self, x):
+        return self.NN.forward(x)
 
 
 class Cifar10_Net(Module):
@@ -173,6 +196,84 @@ class MNIST_ownconv_Net(Module):
                              AvgPool2d(7),
                              Flatten(),
                              Linear(4 * 4 * 32, num_labels)
+                             )
+
+    def forward(self, x):
+        return self.NN.forward(x)
+
+
+class LeNet(Module):
+
+    def __init__(self, input_shape, num_labels):
+        '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
+        super().__init__()
+
+        self.NN = Sequential(Conv2d(input_shape[1], 6, 5, padding="same"),
+                             BatchNorm2d(6),
+                             Tanh(),
+                             AvgPool2d(2),
+                             Conv2d(6, 16, 5, padding="same"),
+                             BatchNorm2d(16),
+                             Tanh(),
+                             AvgPool2d(2),
+                             Flatten(),
+                             Linear(16 * 49, 120),
+                             Tanh(),
+                             Linear(120, 84),
+                             Tanh(),
+                             Linear(84, num_labels)
+                             )
+
+    def forward(self, x):
+        return self.NN.forward(x)
+
+
+class LeASLNet(Module):
+
+    def __init__(self, input_shape, num_labels, expansion_rate=1, device="cpu"):
+        '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
+        super().__init__()
+
+        self.NN = Sequential(Conv2d(input_shape[1], 8, 1),
+                             CSC_block(8, expansion_rate, device),
+                             Tanh(),
+                             AvgPool2d(2),
+                             CSC_block(8, expansion_rate, device),
+                             Tanh(),
+                             AvgPool2d(2),
+                             Flatten(),
+                             Linear(49 * 8, 120),
+                             Tanh(),
+                             Linear(120, 84),
+                             Tanh(),
+                             Linear(84, num_labels)
+                             )
+
+    def forward(self, x):
+        return self.NN.forward(x)
+
+
+class LeDepthNet(Module):
+
+    def __init__(self, input_shape, num_labels, device="cpu"):
+        '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
+        super().__init__()
+
+        self.NN = Sequential(Conv2d(input_shape[1], 8, 1),
+                             Depth_wise_block(
+                                 8, 3, padding="same", device=device),
+                             Tanh(),
+                             AvgPool2d(2),
+                             Depth_wise_block(
+                                 8, 3, padding="same", device=device),
+                             Tanh(),
+                             AvgPool2d(2),
+                             Flatten(),
+                             Linear(8 * 49, 120),
+                             Tanh(),
+                             Linear(120, 84),
+                             Tanh(),
+                             Linear(84, num_labels)
                              )
 
     def forward(self, x):
