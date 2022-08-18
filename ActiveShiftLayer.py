@@ -1,5 +1,7 @@
+import numpy as np
 import torch
 from torch import nn
+from torch.nn import functional
 import kornia
 
 
@@ -21,3 +23,24 @@ class ASL(nn.Module):
         shifted = kornia.geometry.transform.translate(x, self.shifts)
         shifted = torch.transpose(shifted, 0, 1)
         return shifted
+
+class Convolution(nn.Module):
+    def __init__(self, size_in, size_out, kernel_size, stride = 1, padding = 0, device = "cpu"):
+        super().__init__()
+
+        self.size_in, self.size_out = size_in, size_out
+        self.stride = stride
+        self.padding = padding
+
+        # init weights
+        k = 1/(size_in*kernel_size**2)
+        sqrt_k = np.sqrt(k)
+        self.initial = (torch.rand((size_out, size_in, kernel_size, kernel_size), requires_grad=True) * 2 -1) * sqrt_k
+        self.weights = nn.Parameter(self.initial.clone().to(device))
+
+        # init bias
+        self.initial_bias = (torch.rand((size_out), requires_grad=True) * 2 -1) * sqrt_k
+        self.bias = nn.Parameter(self.initial_bias.clone().to(device))
+
+    def forward(self, x):
+        return functional.conv2d(x, self.weights, bias=self.bias, stride=self.stride, padding = self.padding)

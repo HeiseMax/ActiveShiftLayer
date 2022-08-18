@@ -1,7 +1,7 @@
 import torch
 
 
-def test_loss(NN, test_dataloader, criterion):
+def test_loss(NN, test_dataloader, criterion, device):
     correct = 0
     total = 0
     total2 = 0
@@ -10,6 +10,8 @@ def test_loss(NN, test_dataloader, criterion):
     with torch.no_grad():
         for data in test_dataloader:
             images, labels = data
+            images = images.to(device)
+            labels = labels.to(device)
             # calculate outputs by running images through the network
             outputs = NN(images)
             loss += criterion(outputs, labels).item()
