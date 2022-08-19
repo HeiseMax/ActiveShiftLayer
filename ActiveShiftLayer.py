@@ -1,19 +1,19 @@
 import numpy as np
 import torch
 from torch import nn
-from torch.nn import functional
+from torch.nn import functional, Module, Sequential, ReLU, Conv2d, BatchNorm2d
 import kornia
 
 
-class ASL(nn.Module):
+class ASL(Module):
     def __init__(self, size_in, device):
         super().__init__()
 
         self.size_in, self.size_out = size_in, size_in
 
         # init shifts
-        self.initial = torch.rand(
-            (self.size_in, 2), requires_grad=False) * 2 - 1
+        self.initial = (torch.rand(
+            (self.size_in, 2), requires_grad=True) * 2 - 1)
         self.shifts = nn.Parameter(self.initial.clone().to(device))
 
     def forward(self, x):
@@ -25,7 +25,7 @@ class ASL(nn.Module):
         return shifted
 
 
-class ASL2(nn.Module):
+class ASL2(Module):
     def __init__(self, size_in, device):
         super().__init__()
 
@@ -41,8 +41,52 @@ class ASL2(nn.Module):
         shifted = torch.zeros_like(x)
         for i in range(self.shifts.shape[1]):
             shifted[:, i] = kornia.geometry.transform.translate(
-                x[:, i], self.shifts)
+                x[:, i], self.shifts)  # finish this loop
         return shifted
+
+
+class CSC_block(Module):
+    '''Convolution-Shift-Convolution'''
+
+    def __init__(self, input_size, output_size, expansion_rate, device="cpu"):
+        '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
+        super().__init__()
+
+        expanded_size = int(input_size * expansion_rate)
+
+        self.NN = Sequential(
+            Conv2d(input_size, expanded_size, 1),
+            BatchNorm2d(expanded_size),
+            ReLU(),
+            ASL(expanded_size, device),
+            Conv2d(expanded_size, output_size, 1)
+        )
+
+    def forward(self, x):
+        post_block = self.NN.forward(x)
+        return post_block  # + x
+
+
+class Depth_wise_block(Module):
+    '''Depthwise-Convolution'''
+
+    def __init__(self, input_size, output_size, kernel_size, padding, k=1, device="cpu"):
+        '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
+        super().__init__()
+
+        expanded_size = int(input_size * k)
+
+        self.NN = Sequential(
+            Conv2d(input_size, expanded_size, 1),
+            BatchNorm2d(expanded_size),
+            ReLU(),
+            Conv2d(expanded_size, expanded_size, kernel_size,
+                   padding=padding, groups=expanded_size),
+            Conv2d(expanded_size, output_size, 1)
+        )
+
+    def forward(self, x):
+        return self.NN.forward(x)
 
 
 class Convolution(nn.Module):
