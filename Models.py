@@ -1,4 +1,4 @@
-from torch.nn import Module, Sequential, Conv2d, MaxPool2d, Dropout2d, ReLU, Flatten, Linear, BatchNorm2d, AvgPool2d, Sigmoid, Tanh, Softmax
+from torch.nn import Module, Sequential, Conv2d, MaxPool2d, Dropout2d, ReLU, Flatten, Linear, BatchNorm2d, AvgPool2d, Sigmoid, Tanh, Softmax, Dropout
 from ActiveShiftLayer import ASL, Convolution, CSC_block, Depth_wise_block
 
 
@@ -111,6 +111,44 @@ class VGGNet(Module):
                              Flatten(),
                              Linear(final_size, 128),
                              ReLU(),
+                             Linear(128, num_labels)
+                             )
+
+    def forward(self, x):
+        return self.NN.forward(x)
+
+class VGGNet2(Module):
+    def __init__(self, input_shape, num_labels, device="cpu"):
+        '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
+        super().__init__()
+
+        p_drop = 0.2
+
+        final_size = 128 * int(input_shape[2]*input_shape[3]/64)
+        """ #channel * image_size * pool_reduction (1/4 * 1/4 *1/4) """
+
+        self.NN = Sequential(Conv2d(input_shape[1], 32, 3, padding="same"),
+                             ReLU(),
+                             Conv2d(32, 32, 3, padding="same"),
+                             ReLU(),
+                             MaxPool2d(2),
+                             Dropout2d(p_drop),
+                             Conv2d(32, 64, 3, padding="same"),
+                             ReLU(),
+                             Conv2d(64, 64, 3, padding="same"),
+                             ReLU(),
+                             MaxPool2d(2),
+                             Dropout2d(p_drop),
+                             Conv2d(64, 128, 3, padding="same"),
+                             ReLU(),
+                             Conv2d(128, 128, 3, padding="same"),
+                             ReLU(),
+                             MaxPool2d(2),
+                             Dropout2d(p_drop),
+                             Flatten(),
+                             Linear(final_size, 128),
+                             ReLU(),
+                             Dropout(p_drop),
                              Linear(128, num_labels)
                              )
 
