@@ -54,6 +54,7 @@ class CSC_block(Module):
 
         expanded_size = int(input_size * expansion_rate)
 
+        # rename to block
         self.NN = Sequential(
             Conv2d(input_size, expanded_size, 1),
             BatchNorm2d(expanded_size),
@@ -76,6 +77,7 @@ class Depth_wise_block(Module):
 
         expanded_size = int(input_size * k)
 
+        # rename to block
         self.NN = Sequential(
             Conv2d(input_size, expanded_size, 1),
             BatchNorm2d(expanded_size),
