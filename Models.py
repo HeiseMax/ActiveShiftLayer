@@ -160,6 +160,7 @@ class VGGNet(Module):
         return self.NN.forward(x)
 
 
+
 class VGGNet2(Module):
     def __init__(self, input_shape, num_labels, device):
         '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
