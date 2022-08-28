@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from torch import nn
-from torch.nn import functional, Module, Sequential, ReLU, Conv2d, BatchNorm2d
+from torch.nn import functional, Module, Sequential, ReLU, Conv2d, BatchNorm2d, ModuleList, Identity
 import kornia
 
 
@@ -25,27 +25,38 @@ class ASL(Module):
         return shifted
 
 
-class ASL2(Module):
-    def __init__(self, size_in, device):
+class CSC_block(Module):
+    '''Convolution-Shift-Convolution'''
+
+    def __init__(self, input_size, output_size, expansion_rate, device="cpu"):
+        '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
         super().__init__()
 
-        self.size_in, self.size_out = size_in, size_in
+        expanded_size = int(input_size * expansion_rate)
 
-        # init shifts
-        self.initial = torch.rand(
-            (self.size_in, 2), requires_grad=True) * 2 - 1
-        self.shifts = nn.Parameter(self.initial.clone().to(device))
+        # rename to block
+        self.NN = Sequential(
+            Conv2d(input_size, expanded_size, 1),
+            BatchNorm2d(expanded_size),
+            ReLU(),
+            ASL(expanded_size, device),
+            Conv2d(expanded_size, input_size, 1)
+        )
+
+        if not (input_size == output_size):
+            self.residual_conv = Conv2d(input_size, output_size, 1)
+        else:
+            self.residual_conv = Identity()
 
     def forward(self, x):
-        # swap batch and channels
-        shifted = torch.zeros_like(x)
-        for i in range(self.shifts.shape[1]):
-            shifted[:, i] = kornia.geometry.transform.translate(
-                x[:, i], self.shifts)  # finish this loop
-        return shifted
+        residual = x
+        x = self.NN.forward(x)
+        x = x + residual
+        x = self.residual_conv(x)
+        return x
 
 
-class CSC_block(Module):
+class CSC_block_res2(Module):
     '''Convolution-Shift-Convolution'''
 
     def __init__(self, input_size, output_size, expansion_rate, device="cpu"):
@@ -63,9 +74,45 @@ class CSC_block(Module):
             Conv2d(expanded_size, output_size, 1)
         )
 
+        if not (output_size == 0):
+            self.residual_conv = Conv2d(
+                input_size + output_size, output_size, 1)
+        else:
+            self.residual_conv = Identity()
+
     def forward(self, x):
-        post_block = self.NN.forward(x)
-        return post_block  # + x
+        residual = x
+        x = self.NN.forward(x)
+        x = torch.cat((x, residual), 1)
+        x = self.residual_conv(x)
+        return x
+
+
+class CSC_block_res3(Module):
+    '''Convolution-Shift-Convolution'''
+
+    def __init__(self, input_size, output_size, expansion_rate, device="cpu"):
+        '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
+        super().__init__()
+
+        expanded_size = int(input_size * expansion_rate)
+
+        # rename to block
+        self.NN = Sequential(
+            Conv2d(input_size, expanded_size, 1),
+            BatchNorm2d(expanded_size),
+            ReLU(),
+            ASL(expanded_size, device)
+        )
+
+        self.residual_conv = Conv2d(expanded_size + input_size, output_size, 1)
+
+    def forward(self, x):
+        residual = x
+        x = self.NN.forward(x)
+        x = torch.cat((x, residual), 1)
+        x = self.residual_conv(x)
+        return x
 
 
 class Depth_wise_block(Module):
