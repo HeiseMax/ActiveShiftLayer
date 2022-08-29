@@ -1,5 +1,8 @@
 import torch
 import time
+from torch import optim
+
+# Util for LeNet and VGG
 
 
 def test_loss(NN, test_dataloader, criterion, device):
@@ -27,13 +30,31 @@ def test_loss(NN, test_dataloader, criterion, device):
     return loss/total2, 100 * correct / total
 
 
-def train_NN(NN, train_dataloader, test_dataloader, epochs, optimizer, criterion, scheduler, device, steps_to_test, print_test=True):
+def train_NN(NN, criterion, train_dataloader, test_dataloader, epochs, batches_to_test, patience, device,  print_test=True, verbose=False):
+    batches = 0
+    if len(NN.batches) > 0:
+        batches = NN.batches[-1]
+    NN.batches_per_epoch = len(train_dataloader)
+
+    lr = NN.lr
+    weight_decay = NN.weight_decay
+    momentum = NN.momentum
+
+    optimizer = optim.SGD(NN.parameters(), lr=lr,
+                          momentum=momentum, weight_decay=weight_decay)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, factor=0.5, patience=patience, verbose=verbose)
+
+    NN.train()
+
     for epoch in range(epochs):  # loop over the dataset multiple times
-        ex_time_start = time.process_time_ns()
         running_loss = 0.0
+        running_time = 0.0
 
         for i, data in enumerate(train_dataloader, 0):
-            NN.train()
+            batches += 1
+            ex_time_start = time.process_time_ns()
+
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data
             inputs = inputs.to(device)
@@ -48,29 +69,41 @@ def train_NN(NN, train_dataloader, test_dataloader, epochs, optimizer, criterion
             loss.backward()
             optimizer.step()
 
-            # print statistics
+            # compute stats
             running_loss += loss.item()
-            if i % steps_to_test == steps_to_test - 1:    # print every steps_to_test mini-batches
-                test_time_start = time.process_time_ns()
-                train_loss = running_loss / steps_to_test
+            ex_time_end = time.process_time_ns()
+            ex_time = (ex_time_end - ex_time_start) * 1e-9
+            running_time += ex_time
+            if batches % batches_to_test == 0:    # calculate every "batches_to_test" mini-batches
+                NN.eval()
+                train_loss = running_loss / batches_to_test
+
                 current_test_loss, test_accuracy = test_loss(
                     NN, test_dataloader, criterion, device)
+
                 NN.train_loss.append(train_loss)
                 NN.test_loss.append(current_test_loss)
                 NN.test_accuracy.append(test_accuracy)
+                NN.batches.append(batches)
+
+                # print stats
                 if print_test:
                     print(
                         f'[{epoch + 1}, {i + 1:5d}] train_loss: {train_loss:.3f}')
                     print(
                         f'test_loss: {current_test_loss:.3f}, test_accuracy: {test_accuracy}')
+
+                NN.train_time.append(running_time)
+                running_time = 0.0
                 running_loss = 0.0
+
+                scheduler.step(train_loss)
                 NN.train()
-                test_time_end = time.process_time_ns()
-        scheduler.step()
-        ex_time_end = time.process_time_ns()
-        ex_time = (ex_time_end - ex_time_start -
-                   (test_time_end - test_time_start)) * 1e-9
-        NN.train_time.append(ex_time)
+
+    NN.lr = optimizer.state_dict()["param_groups"][0]["lr"]
+
+
+# Util for U-Net
 
 
 def test_loss_Unet(NN, test_dataloader, criterion, device):

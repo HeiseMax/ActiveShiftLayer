@@ -7,13 +7,20 @@ from ActiveShiftLayer import ASL, Convolution, CSC_block, Depth_wise_block
 
 class LeNet(Module):
 
-    def __init__(self, input_shape, num_labels):
+    def __init__(self, input_shape, num_labels, initial_lr, momentum, weight_decay):
         '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
         super().__init__()
 
         self.input_shape = input_shape
         self.num_labels = num_labels
 
+        self.initial_lr = initial_lr
+        self.lr = initial_lr
+        self.momentum = momentum
+        self.weight_decay = weight_decay
+        self.batches_per_epoch = 0
+
+        self.batches = []
         self.train_loss = []
         self.train_time = []
         self.test_loss = []
@@ -43,7 +50,7 @@ class LeNet(Module):
 
 class LeASLNet(Module):
 
-    def __init__(self, input_shape, num_labels, device, expansion_rate=1):
+    def __init__(self, input_shape, num_labels, initial_lr, momentum, weight_decay, device, expansion_rate=1):
         '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
         super().__init__()
 
@@ -52,6 +59,13 @@ class LeASLNet(Module):
         self.device = device
         self.expansion_rate = expansion_rate
 
+        self.initial_lr = initial_lr
+        self.lr = initial_lr
+        self.momentum = momentum
+        self.weight_decay = weight_decay
+        self.batches_per_epoch = 0
+
+        self.batches = []
         self.train_loss = []
         self.train_time = []
         self.test_loss = []
@@ -80,14 +94,21 @@ class LeASLNet(Module):
 
 class LeDepthNet(Module):
 
-    def __init__(self, input_shape, num_labels, device):
+    def __init__(self, input_shape, num_labels, initial_lr, momentum, weight_decay, device):
         '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
         super().__init__()
 
         self.input_shape = input_shape
         self.num_labels = num_labels
         self.device = device
+        
+        self.initial_lr = initial_lr
+        self.lr = initial_lr
+        self.momentum = momentum
+        self.weight_decay = weight_decay
+        self.batches_per_epoch = 0
 
+        self.batches = []
         self.train_loss = []
         self.train_time = []
         self.test_loss = []
@@ -117,9 +138,8 @@ class LeDepthNet(Module):
 
 # VGG (Visual Geometry Group)
 
-
 class VGGNet(Module):
-    def __init__(self, input_shape, num_labels, device):
+    def __init__(self, input_shape, num_labels, initial_lr, momentum, weight_decay, device, p_drop=0.2):
         '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
         super().__init__()
 
@@ -127,55 +147,19 @@ class VGGNet(Module):
         self.num_labels = num_labels
         self.device = device
 
+        self.initial_lr = initial_lr
+        self.lr = initial_lr
+        self.momentum = momentum
+        self.weight_decay = weight_decay
+        self.batches_per_epoch = 0
+
+        self.batches = []
         self.train_loss = []
         self.train_time = []
         self.test_loss = []
         self.test_accuracy = []
 
-        final_size = 128 * int(input_shape[2]*input_shape[3]/64)
-        """ #channel * image_size * pool_reduction (1/4 * 1/4 *1/4) """
-
-        self.NN = Sequential(Conv2d(input_shape[1], 32, 3, padding="same"),
-                             ReLU(),
-                             Conv2d(32, 32, 3, padding="same"),
-                             ReLU(),
-                             MaxPool2d(2),
-                             Conv2d(32, 64, 3, padding="same"),
-                             ReLU(),
-                             Conv2d(64, 64, 3, padding="same"),
-                             ReLU(),
-                             MaxPool2d(2),
-                             Conv2d(64, 128, 3, padding="same"),
-                             ReLU(),
-                             Conv2d(128, 128, 3, padding="same"),
-                             ReLU(),
-                             MaxPool2d(2),
-                             Flatten(),
-                             Linear(final_size, 128),
-                             ReLU(),
-                             Linear(128, num_labels)
-                             )
-
-    def forward(self, x):
-        return self.NN.forward(x)
-
-
-
-class VGGNet2(Module):
-    def __init__(self, input_shape, num_labels, device):
-        '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
-        super().__init__()
-
-        self.input_shape = input_shape
-        self.num_labels = num_labels
-        self.device = device
-
-        self.train_loss = []
-        self.train_time = []
-        self.test_loss = []
-        self.test_accuracy = []
-
-        p_drop = 0.2  # param?
+        self.p_drop = p_drop
 
         final_size = 128 * int(input_shape[2]*input_shape[3]/64)
         """ #channel * image_size * pool_reduction (1/4 * 1/4 *1/4) """
@@ -210,7 +194,7 @@ class VGGNet2(Module):
 
 
 class ASL_VGGNet(Module):
-    def __init__(self, input_shape, num_labels, device, expansion_rate=1):
+    def __init__(self, input_shape, num_labels, initial_lr, momentum, weight_decay, device, p_drop=0.2, expansion_rate=1):
         '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
         super().__init__()
 
@@ -219,12 +203,19 @@ class ASL_VGGNet(Module):
         self.device = device
         self.expansion_rate = expansion_rate
 
+        self.initial_lr = initial_lr
+        self.lr = initial_lr
+        self.momentum = momentum
+        self.weight_decay = weight_decay
+        self.batches_per_epoch = 0
+
+        self.batches = []
         self.train_loss = []
         self.train_time = []
         self.test_loss = []
         self.test_accuracy = []
 
-        p_drop = 0.2
+        self.p_drop = p_drop
 
         final_size = 128 * int(input_shape[2]*input_shape[3]/64)
         """ #channel * image_size * pool_reduction (1/4 * 1/4 *1/4) """
