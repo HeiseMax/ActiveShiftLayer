@@ -2,6 +2,8 @@ import torch
 import time
 from torch import optim
 
+from torchvision import transforms
+
 # Util for LeNet and VGG
 
 
@@ -47,6 +49,9 @@ def train_NN(NN, criterion, train_dataloader, test_dataloader, epochs, batches_t
 
     NN.train()
 
+    randomApl = transforms.RandomApply(transforms.RandomAffine(10, translate=(
+        1/20, 1/20), scale=(0.8, 1), shear=10, interpolation=transforms.InterpolationMode.BILINEAR), 0.3)
+
     for epoch in range(epochs):  # loop over the dataset multiple times
         running_loss = 0.0
         running_time = 0.0
@@ -59,6 +64,9 @@ def train_NN(NN, criterion, train_dataloader, test_dataloader, epochs, batches_t
             inputs, labels = data
             inputs = inputs.to(device)
             labels = labels.to(device)
+
+            # seems to apply same transformations for all images in batch
+            inputs = randomApl(inputs)
 
             # zero the parameter gradients
             optimizer.zero_grad()
