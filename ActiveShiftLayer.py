@@ -29,7 +29,7 @@ class CSC_block(Module):
     '''Convolution-Shift-Convolution'''
 
     def __init__(self, input_size, output_size, expansion_rate, device):
-        '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
+        '''input_size: input channel number'''
         super().__init__()
 
         expanded_size = int(input_size * expansion_rate)

@@ -19,6 +19,7 @@ class LeNet(Module):
         self.momentum = momentum
         self.weight_decay = weight_decay
         self.batches_per_epoch = 0
+        self.p_randomTransform = 0
 
         self.batches = []
         self.train_loss = []
@@ -64,6 +65,7 @@ class LeASLNet(Module):
         self.momentum = momentum
         self.weight_decay = weight_decay
         self.batches_per_epoch = 0
+        self.p_randomTransform = 0
 
         self.batches = []
         self.train_loss = []
@@ -107,6 +109,7 @@ class LeDepthNet(Module):
         self.momentum = momentum
         self.weight_decay = weight_decay
         self.batches_per_epoch = 0
+        self.p_randomTransform = 0
 
         self.batches = []
         self.train_loss = []
@@ -152,6 +155,7 @@ class VGGNet(Module):
         self.momentum = momentum
         self.weight_decay = weight_decay
         self.batches_per_epoch = 0
+        self.p_randomTransform = 0
 
         self.batches = []
         self.train_loss = []
@@ -208,6 +212,7 @@ class ASL_VGGNet(Module):
         self.momentum = momentum
         self.weight_decay = weight_decay
         self.batches_per_epoch = 0
+        self.p_randomTransform = 0
 
         self.batches = []
         self.train_loss = []
@@ -288,13 +293,21 @@ class U_Net(Module):
                            )
         return block
 
-    def __init__(self, input_shape, size_out):
+    def __init__(self, input_shape, size_out,initial_lr, momentum, weight_decay):
         '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
         super().__init__()
 
         self.input_shape = input_shape
         self.size_out = size_out
 
+        self.initial_lr = initial_lr
+        self.lr = initial_lr
+        self.momentum = momentum
+        self.weight_decay = weight_decay
+        self.batches_per_epoch = 0
+        self.p_randomTransform = 0
+
+        self.batches = []
         self.train_loss = []
         self.train_time = []
         self.test_loss = []
@@ -383,18 +396,25 @@ class U_Net_ASL(Module):
                            )
         return block
 
-    def __init__(self, input_shape, size_out, expansion_rate, device):
+    def __init__(self, input_shape, size_out, initial_lr, momentum, weight_decay, expansion_rate, device):
         '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
         super().__init__()
 
         self.input_shape = input_shape
         self.size_out = size_out
 
+        self.initial_lr = initial_lr
+        self.lr = initial_lr
+        self.momentum = momentum
+        self.weight_decay = weight_decay
+        self.batches_per_epoch = 0
+        self.p_randomTransform = 0
+
+        self.batches = []
         self.train_loss = []
         self.train_time = []
         self.test_loss = []
         self.test_accuracy = []
-
         self.NN = ModuleDict({
             "contr_1": self.contracting_block(input_shape[1], 64, expansion_rate, device),
             "contr_2": self.contracting_block(64, 128, expansion_rate, device),
@@ -424,6 +444,9 @@ class U_Net_ASL(Module):
         final = self.NN["final"](cat_3)
 
         return final
+
+
+# Other
 
 
 class Cifar10_Conv_Net(Module):
