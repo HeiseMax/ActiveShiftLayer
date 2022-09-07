@@ -96,14 +96,13 @@ class LeASLNet(Module):
 
 class LeDepthNet(Module):
 
-    def __init__(self, input_shape, num_labels, initial_lr, momentum, weight_decay, device):
+    def __init__(self, input_shape, num_labels, initial_lr, momentum, weight_decay):
         '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
         super().__init__()
 
         self.input_shape = input_shape
         self.num_labels = num_labels
-        self.device = device
-        
+
         self.initial_lr = initial_lr
         self.lr = initial_lr
         self.momentum = momentum
@@ -123,8 +122,7 @@ class LeDepthNet(Module):
                              BatchNorm2d(6),
                              Tanh(),
                              AvgPool2d(2),
-                             Depth_wise_block(
-                                 6, 16, 3, padding="same", device=device),
+                             Depth_wise_block(6, 16, 3, padding="same"),
                              Tanh(),
                              AvgPool2d(2),
                              Flatten(),
@@ -293,7 +291,7 @@ class U_Net(Module):
                            )
         return block
 
-    def __init__(self, input_shape, size_out,initial_lr, momentum, weight_decay):
+    def __init__(self, input_shape, size_out, initial_lr, momentum, weight_decay):
         '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
         super().__init__()
 

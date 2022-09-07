@@ -5,6 +5,73 @@ from torch.nn import functional, Module, Sequential, ReLU, Conv2d, BatchNorm2d, 
 import kornia
 
 
+def shift_img(img, s, device):
+    ''' img shape : (1,1,h,w)
+        s   shape : (1,2)
+    '''
+    frac = (s - s.type(torch.int32)).to(device)
+    frac = frac[0]
+    s_neg = torch.floor((frac - torch.abs(frac))/2).to(device)
+    s_neg = s_neg.type(torch.int32)
+
+    shifts = (s + s_neg).to(device)
+    frac = torch.abs(frac)
+    shifts = shifts.type(torch.int32)
+
+    new_size = torch.tensor([img.size(2) + 2, img.size(3) + 2]).to(device)
+    old_size = torch.tensor([img.size(2), img.size(3)]).to(device)
+
+    fr = torch.ones((4, 1, 1, new_size[0], new_size[1])).to(device)
+    fr[0] *= frac[0]*frac[1]
+    fr[1] *= frac[0]*(1-frac[1])
+    fr[2] *= (1-frac[0])*frac[1]
+    fr[3] *= (1-frac[0])*(1-frac[1])
+
+    f2 = torch.zeros((4, 1, 1, new_size[0], new_size[1])).to(device)
+    f2[0, :, :, 1:new_size[0]-1, 1:new_size[1]-1] = img.clone()
+    f2[1, :, :, 2:new_size[0], 1:new_size[1]-1] = img.clone()
+    f2[2, :, :, 1:new_size[0]-1, 2:new_size[1]] = img.clone()
+    f2[3, :, :, 2:new_size[0],  2:new_size[1]] = img.clone()
+
+    temp = f2[0]*fr[3] + f2[1]*fr[1] + f2[2]*fr[2] + f2[3]*fr[0]
+
+    f_im = torch.zeros((1, 1, old_size[0], old_size[1])).to(device)
+
+    bound_right = torch.minimum(
+        new_size[0], new_size[0] - shifts[0, 0] - (1+s_neg[0]))
+    bound_left = torch.maximum(torch.tensor(1).to(device), 1 - shifts[0, 0])
+    bound_up = torch.minimum(
+        new_size[1], new_size[1] - shifts[0, 1] - (1+s_neg[1]))
+    bound_down = torch.maximum(torch.tensor(1).to(device), 1 - shifts[0, 1])
+    bound_finalxr = torch.minimum(old_size[0]+1, old_size[0] + shifts[0, 0]+1)
+    bound_finalxl = torch.maximum(torch.tensor(0).to(device), shifts[0, 0])
+    bound_finalyu = torch.minimum(old_size[1]+1, old_size[1] + shifts[0, 1]+1)
+    bound_finalyd = torch.maximum(torch.tensor(0).to(device), shifts[0, 1])
+
+    f_im[:, :, bound_finalxl:bound_finalxr, bound_finalyd:bound_finalyu] = temp[:,
+                                                                                :, bound_left:bound_right, bound_down:bound_up]
+    return f_im
+
+
+class ASL2(Module):
+    def __init__(self, size_in, device):
+        super().__init__()
+
+        batchsize = 1
+
+        self.size_in, self.size_out = size_in, size_in
+        self.device = device
+
+        # init shifts
+        self.initial = (torch.rand(
+            (batchsize, 2), requires_grad=True) * 2 - 1)
+        self.shifts = nn.Parameter(self.initial.clone().to(device))
+
+    def forward(self, x):
+        shifted = shift_img(x, self.shifts, self.device)
+        return shifted
+
+
 class ASL(Module):
     def __init__(self, size_in, device):
         super().__init__()
@@ -118,7 +185,7 @@ class CSC_block_res3(Module):
 class Depth_wise_block(Module):
     '''Depthwise-Convolution'''
 
-    def __init__(self, input_size, output_size, kernel_size, padding, k=1, device="cpu"):
+    def __init__(self, input_size, output_size, kernel_size, padding, k=1):
         '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
         super().__init__()
 

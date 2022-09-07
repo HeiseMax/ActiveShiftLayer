@@ -1,8 +1,15 @@
-import torch
 import time
-from torch import optim
+import matplotlib.pyplot as plt
+import numpy as np
 
+import torch
+from torch import optim
+from torch.utils.data import DataLoader
+
+import torchvision.datasets as datasets
 from torchvision import transforms
+
+from ActiveShiftLayer import CSC_block
 
 # Util for LeNet and VGG
 
@@ -30,28 +37,6 @@ def test_loss(NN, test_dataloader, criterion, device):
         NN.train()
 
     return loss/total2, 100 * correct / total
-
-
-def inference_time(NN, test_dataloader, device):
-    NN.eval()
-    NN.to(device)
-    t_proc = t_perf = 0
-    with torch.no_grad():
-        for data in test_dataloader:
-            images, labels = data
-            images = images.to(device)
-            labels = labels.to(device)
-            # calculate outputs by running images through the network
-            start_perf = time.perf_counter_ns()
-            start_time = time.process_time_ns()
-            _ = NN(images)
-            stop_time = time.process_time_ns()
-            stop_perf = time.perf_counter_ns()
-
-            t_perf += (stop_perf - start_perf)
-            t_proc += (stop_time - start_time)
-    NN.train()
-    return t_proc, t_perf
 
 
 def train_NN(NN, criterion, train_dataloader, test_dataloader, epochs, batches_to_test, patience, device,  print_test=True, verbose=False, p_randomTransform=0):
@@ -316,3 +301,163 @@ def train_U_NET_old(NN, train_dataloader, test_dataloader, epochs, optimizer, cr
         ex_time = (ex_time_end - ex_time_start -
                    (test_time_end - test_time_start)) * 1e-9
         NN.train_time.append(ex_time)
+
+# Load Datasets
+
+
+def loadMNIST(batch_size):
+    # transform images into normalized tensors
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=(0.5,), std=(0.5,))
+    ])
+
+    train_dataset = datasets.MNIST(
+        "./data/MNIST",
+        download=True,
+        train=True,
+        transform=transform,
+    )
+
+    test_dataset = datasets.MNIST(
+        "./data/MNIST",
+        download=True,
+        train=False,
+        transform=transform,
+    )
+
+    train_dataloader = DataLoader(
+        dataset=train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=1,
+        pin_memory=True,
+    )
+
+    test_dataloader = DataLoader(
+        dataset=test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=1,
+        pin_memory=True,
+    )
+
+    classes = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+
+    return train_dataset, train_dataloader, test_dataset, test_dataloader, classes
+
+
+def loadCIFAR10(batch_size):
+    # transform images into normalized tensors
+    transform = transforms.Compose(
+        [transforms.ToTensor(),
+         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+    train_dataset = datasets.CIFAR10(root='./data/CIFAR10', train=True,
+                                     download=True, transform=transform)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size,
+                                  shuffle=True, num_workers=2)
+
+    test_dataset = datasets.CIFAR10(root='./data/CIFAR10', train=False,
+                                    download=True, transform=transform)
+    test_dataloader = DataLoader(test_dataset, batch_size=batch_size,
+                                 shuffle=False, num_workers=2)
+
+    classes = ('plane', 'car', 'bird', 'cat',
+               'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+
+    return train_dataset, train_dataloader, test_dataset, test_dataloader, classes
+
+# Stats
+
+
+def inference_time(NN, test_dataloader, device):
+    NN.eval()
+    NN.to(device)
+    t_proc = t_perf = 0
+    with torch.no_grad():
+        for data in test_dataloader:
+            images, labels = data
+            images = images.to(device)
+            labels = labels.to(device)
+            # calculate outputs by running images through the network
+            start_perf = time.perf_counter_ns()
+            start_time = time.process_time_ns()
+            _ = NN(images)
+            stop_time = time.process_time_ns()
+            stop_perf = time.perf_counter_ns()
+
+            t_perf += (stop_perf - start_perf)
+            t_proc += (stop_time - start_time)
+    NN.train()
+    return t_proc, t_perf
+
+# Plot
+
+
+def plot_loss(NN):
+    plt.semilogy(NN.batches, NN.train_loss, label="train_loss")
+    plt.semilogy(NN.batches, NN.test_loss, label="test_loss")
+    plt.legend()
+    plt.xlabel("batches")
+    plt.ylabel("cross entropy loss")
+    plt.title("loss")
+    plt.show()
+
+
+def plot_acc(NN):
+    plt.semilogy(NN.batches, NN.test_accuracy)
+    plt.xlabel("batches")
+    plt.ylabel("test accuracy")
+    plt.title("test accuracy")
+    plt.show()
+
+
+def plot_shifts(NN):
+    i = 1
+    for layer in NN.NN:
+        if isinstance(layer, CSC_block):
+            initial_shifts = layer.NN[3].initial.detach().to("cpu").numpy()
+            shifts = layer.NN[3].shifts.detach().to("cpu").numpy()
+            plt.scatter(initial_shifts[:, 0], initial_shifts[:, 1])
+            plt.xlabel("pixelshift x")
+            plt.ylabel("pixelshift y")
+            plt.title(f"initial shifts ASL-layer {i}")
+            plt.show()
+            plt.scatter(shifts[:, 0], shifts[:, 1])
+            plt.xlabel("pixelshift x")
+            plt.ylabel("pixelshift y")
+            plt.title(f"final shifts ASL-layer {i}")
+            plt.show()
+            i += 1
+
+
+def plot_GPmodel(optimizer, axis_1, axis_2, axis_3, axis_3_value, elevation=30, azim=-60):
+    fig = plt.figure(figsize=(10, 10), dpi=80)
+    ax = fig.add_subplot(111, projection='3d')
+
+    x = np.arange(
+        optimizer.parameter_range[axis_1][0], optimizer.parameter_range[axis_1][1], 0.0005)
+    y = np.arange(
+        optimizer.parameter_range[axis_2][0], optimizer.parameter_range[axis_2][1], 0.0005)
+    X, Y = np.meshgrid(x, y)
+
+    xflat = X.flatten()
+    yflat = Y.flatten()
+    z = np.ones_like(xflat) * axis_3_value
+    p = np.array([xflat, yflat, z])
+
+    zs = np.array(optimizer.gpmodel.predict_noiseless(p.T)[0])
+    Z = zs.reshape(X.shape)
+
+    surf = ax.plot_surface(X, Y, Z)
+
+    ax.set_xlabel(axis_1)
+    ax.set_ylabel(axis_2)
+    ax.set_zlabel('accuracy')
+
+    ax.set_title(f'hyperparameter GP model ({axis_3}: {axis_3_value})')
+
+    ax.view_init(elevation, azim)
+
+    plt.show()
