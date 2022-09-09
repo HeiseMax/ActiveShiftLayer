@@ -140,13 +140,12 @@ class LeDepthNet(Module):
 # VGG (Visual Geometry Group)
 
 class VGGNet(Module):
-    def __init__(self, input_shape, num_labels, initial_lr, momentum, weight_decay, device, p_drop=0.2):
+    def __init__(self, input_shape, num_labels, initial_lr, momentum, weight_decay, p_drop=0.2):
         '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
         super().__init__()
 
         self.input_shape = input_shape
         self.num_labels = num_labels
-        self.device = device
 
         self.initial_lr = initial_lr
         self.lr = initial_lr
@@ -366,22 +365,10 @@ class U_Net_ASL(Module):
         block = Sequential(CSC_block(size_in, size_mid, expansion_rate, device),
                            CSC_block(size_mid, size_mid,
                                      expansion_rate, device),
-                           #    ConvTranspose2d(size_mid, size_out, kernel_size=1,
-                           #                    stride=2, padding=0, output_padding=1))
                            self.CSC_transpose2d(
-            size_mid, size_out, expansion_rate, padding=0, out_padding=1, device=device))
+                               size_mid, size_out, expansion_rate, padding=0, out_padding=1, device=device)
+                           )
 
-        return block
-
-    def expanding_block_c(self, size_in, size_mid, size_out, kernel):
-        block = Sequential(Conv2d(size_in, size_mid, kernel, padding="same"),
-                           ReLU(),
-                           BatchNorm2d(size_mid),
-                           Conv2d(size_mid, size_mid, kernel, padding="same"),
-                           ReLU(),
-                           BatchNorm2d(size_mid),
-                           ConvTranspose2d(size_mid, size_out, kernel_size=1,
-                                           stride=2, padding=0, output_padding=1))
         return block
 
     def finalizing_block(self, size_in, size_mid, size_out, expansion_rate, device):

@@ -51,7 +51,7 @@ class HyperparamOptimizer():
                         first_index] = self.train_function(paramters, self.device)
             self.points[i + first_index] = parameter_list
 
-    def GPR_optim(self, num_iterations):
+    def GPR_optim(self, num_iterations, end_var_optim=30):
         first_index = len(self.values)
         self.values = np.append(
             self.values, np.zeros((num_iterations, 1)), axis=0)
@@ -64,27 +64,32 @@ class HyperparamOptimizer():
             self.gpmodel = models.GPRegression(
                 self.points, self.values, GPy.kern.Matern52(self.num_params, ARD=True))
 
-            if i % 2 == 0 or i >= 30:
+            if i % 2 == 0 or i >= end_var_optim:
                 pars, details, _ = optunity.maximize(
                     self.GPPredict, **self.parameter_range)
             else:
                 pars, details, _ = optunity.maximize(
                     self.maxVarGP, **self.parameter_range)
 
-            q = np.array([pars['lr'], pars['momentum'],
-                         pars["p_randomTransform"]])
+            # q = np.array([pars['lr'], pars['momentum'],
+            #              pars["p_randomTransform"]])
+
+            q = np.array([pars[i] for i in pars])
 
             self.gp_predictions[i + first_index] = self.GPPredict(**pars)
             self.points[i + first_index] = q
             self.values[i +
                         first_index] = self.train_function(pars, self.device)
 
-    def get_best_parameters(self):
-        ind = np.argmax(self.values)
+    def get_best_parameters(self, n_best):
+        configs = []
+        ind = np.flip(np.argsort(self.values, axis=0))[:n_best]
         params = self.points[ind]
-        best_params = {}
-        for i, param in enumerate(self.parameter_range):
-            best_params[param] = params[i]
-        acc = self.values[ind][0]
+        for i in range(n_best):
+            best_params = {}
+            best_params["acc"] = self.values[ind][i][0][0]
+            for j, param in enumerate(self.parameter_range):
+                best_params[param] = params[i][0][j]
+            configs.append(best_params)
 
-        return best_params, acc
+        return configs
