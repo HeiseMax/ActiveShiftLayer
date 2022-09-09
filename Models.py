@@ -290,12 +290,12 @@ class U_Net(Module):
                            )
         return block
 
-    def __init__(self, input_shape, size_out, initial_lr, momentum, weight_decay):
+    def __init__(self, input_shape, output_channels, initial_lr, momentum, weight_decay):
         '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
         super().__init__()
 
         self.input_shape = input_shape
-        self.size_out = size_out
+        self.output_channels = output_channels
 
         self.initial_lr = initial_lr
         self.lr = initial_lr
@@ -317,7 +317,7 @@ class U_Net(Module):
             "bottleneck": self.expanding_block(256, 512, 256, 3),
             "expand_1": self.expanding_block(512, 256, 128, 3),
             "expand_2": self.expanding_block(256, 128, 64, 3),
-            "final": self.finalizing_block(128, 64, size_out, 3),
+            "final": self.finalizing_block(128, 64, output_channels, 3),
             "max_pool": MaxPool2d(2)
         })
 
