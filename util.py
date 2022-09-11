@@ -396,8 +396,8 @@ def inference_time(NN, test_dataloader, device):
 
 
 def plot_loss(NN):
-    plt.semilogy(NN.batches, NN.train_loss, label="train_loss")
-    plt.semilogy(NN.batches, NN.test_loss, label="test_loss")
+    plt.plot(NN.batches, NN.train_loss, label="train_loss")
+    plt.plot(NN.batches, NN.test_loss, label="test_loss")
     plt.legend()
     plt.xlabel("batches")
     plt.ylabel("cross entropy loss")
