@@ -151,8 +151,6 @@ def test_loss_Unet(NN, test_dataloader, criterion, device):
             total2 += 1
             correct += (predicted == labels).sum().item()
             i += 1
-            if i == 200:
-                break
         NN.train()
 
     return loss/total2, 100 * correct / total
@@ -177,11 +175,12 @@ def train_U_NET(NN, criterion, train_dataloader, test_dataloader, epochs, batche
     NN.train()
 
     randomApl = transforms.RandomApply(torch.nn.ModuleList([transforms.RandomAffine(10, translate=(
-        1/20, 1/20), scale=(0.8, 1), shear=10, interpolation=transforms.InterpolationMode.BILINEAR)]), p=p_randomTransform)
+        1/20, 1/20), scale=(0.8, 1), shear=10, interpolation=transforms.InterpolationMode.NEAREST)]), p=p_randomTransform)
+    
+    running_loss = 0.0
+    running_time = 0.0
 
     for epoch in range(epochs):  # loop over the dataset multiple times
-        running_loss = 0.0
-        running_time = 0.0
 
         for i, data in enumerate(train_dataloader, 0):
             batches += 1
@@ -374,23 +373,20 @@ def loadCIFAR10(batch_size):
 def inference_time(NN, test_dataloader, device):
     NN.eval()
     NN.to(device)
-    t_proc = t_perf = 0
+    t_proc = np.zeros(len(test_dataloader))
     with torch.no_grad():
-        for data in test_dataloader:
+        for i, data in enumerate(test_dataloader):
             images, labels = data
             images = images.to(device)
             labels = labels.to(device)
             # calculate outputs by running images through the network
-            start_perf = time.perf_counter_ns()
             start_time = time.process_time_ns()
             _ = NN(images)
             stop_time = time.process_time_ns()
-            stop_perf = time.perf_counter_ns()
 
-            t_perf += (stop_perf - start_perf)
-            t_proc += (stop_time - start_time)
+            t_proc[i] = (stop_time - start_time)
     NN.train()
-    return t_proc, t_perf
+    return t_proc
 
 # Plot
 
@@ -406,7 +402,7 @@ def plot_loss(NN):
 
 
 def plot_acc(NN):
-    plt.semilogy(NN.batches, NN.test_accuracy)
+    plt.plot(NN.batches, NN.test_accuracy)
     plt.xlabel("batches")
     plt.ylabel("test accuracy")
     plt.title("test accuracy")

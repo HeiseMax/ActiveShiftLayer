@@ -53,7 +53,7 @@ def shift_img(img, s, device):
     return f_im
 
 
-class ASL2(Module):
+class ASL_ownimpl(Module):
     def __init__(self, size_in, device):
         super().__init__()
 
