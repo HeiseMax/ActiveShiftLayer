@@ -380,12 +380,9 @@ def inference_time(NN, test_dataloader, device):
             images = images.to(device)
             labels = labels.to(device)
             # calculate outputs by running images through the network
-            start_time = time.perf_counter_ns()
+            start_time = time.process_time_ns()
             _ = NN(images)
-            stop_time = time.perf_counter_ns()
-
-            print(i)
-            print(stop_time - start_time)
+            stop_time = time.process_time_ns()
 
             t_proc[i] = (stop_time - start_time)
     NN.train()
