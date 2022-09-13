@@ -176,7 +176,7 @@ def train_U_NET(NN, criterion, train_dataloader, test_dataloader, epochs, batche
 
     randomApl = transforms.RandomApply(torch.nn.ModuleList([transforms.RandomAffine(10, translate=(
         1/20, 1/20), scale=(0.8, 1), shear=10, interpolation=transforms.InterpolationMode.NEAREST)]), p=p_randomTransform)
-    
+
     running_loss = 0.0
     running_time = 0.0
 
@@ -380,9 +380,12 @@ def inference_time(NN, test_dataloader, device):
             images = images.to(device)
             labels = labels.to(device)
             # calculate outputs by running images through the network
-            start_time = time.process_time_ns()
+            start_time = time.perf_counter_ns()
             _ = NN(images)
-            stop_time = time.process_time_ns()
+            stop_time = time.perf_counter_ns()
+
+            print(i)
+            print(stop_time - start_time)
 
             t_proc[i] = (stop_time - start_time)
     NN.train()
