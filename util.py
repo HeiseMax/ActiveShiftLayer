@@ -370,42 +370,84 @@ def loadCIFAR10(batch_size):
 # Stats
 
 
-def inference_time(NN, test_dataloader, device):
+def inference_time(NN, input_shape, repetitions, device, warmup_rep=10):
     NN.eval()
     NN.to(device)
-    t_proc = np.zeros(len(test_dataloader))
-    with torch.no_grad():
-        for i, data in enumerate(test_dataloader):
-            images, labels = data
-            images = images.to(device)
-            labels = labels.to(device)
-            # calculate outputs by running images through the network
-            start_time = time.process_time_ns()
-            _ = NN(images)
-            stop_time = time.process_time_ns()
+    timings = np.zeros((repetitions, 1))
 
-            t_proc[i] = (stop_time - start_time)
-    NN.train()
-    return t_proc
+    dummy_input = torch.randn(input_shape, dtype=torch.float).to(device)
+
+    if device == "cuda":
+        # GPU-WARM-UP
+        for _ in range(warmup_rep):
+            _ = NN(dummy_input)
+
+        starter, ender = torch.cuda.Event(
+            enable_timing=True), torch.cuda.Event(enable_timing=True)
+        # MEASURE PERFORMANCE
+        with torch.no_grad():
+            for rep in range(repetitions):
+                starter.record()
+                _ = NN(dummy_input)
+                ender.record()
+                # WAIT FOR GPU SYNC
+                torch.cuda.synchronize()
+                curr_time = starter.elapsed_time(ender)
+                timings[rep] = curr_time
+
+    else:
+        with torch.no_grad():
+            for rep in range(repetitions):
+                start_time = time.time_ns()
+                _ = NN(dummy_input)
+                stop_time = time.time_ns()
+
+                timings[rep] = (stop_time - start_time) * 1e-6
+    return timings
 
 # Plot
 
 
-def plot_loss(NN):
+def plot_loss(NN, y_lim):
     plt.plot(NN.batches, NN.train_loss, label="train_loss")
     plt.plot(NN.batches, NN.test_loss, label="test_loss")
     plt.legend()
+    plt.ylim((y_lim))
     plt.xlabel("batches")
     plt.ylabel("cross entropy loss")
-    plt.title("loss")
+    #plt.title("loss")
     plt.show()
 
 
-def plot_acc(NN):
+def plot_acc(NN, y_lim):
     plt.plot(NN.batches, NN.test_accuracy)
     plt.xlabel("batches")
     plt.ylabel("test accuracy")
-    plt.title("test accuracy")
+    plt.ylim(y_lim)
+    #plt.title("test accuracy")
+    plt.show()
+
+def ASL_plot_loss(NN1, NN2, y_lim):
+    plt.plot(NN1.batches, NN1.train_loss, label="train_loss ($\epsilon = 1$)")
+    plt.plot(NN1.batches, NN1.test_loss, label="test_loss ($\epsilon = 1$)")
+    plt.plot(NN2.batches, NN2.train_loss, label="train_loss ($\epsilon = 3$)")
+    plt.plot(NN2.batches, NN2.test_loss, label="test_loss ($\epsilon = 3$)")
+    plt.legend()
+    plt.ylim((y_lim))
+    plt.xlabel("batches")
+    plt.ylabel("cross entropy loss")
+    #plt.title("loss")
+    plt.show()
+
+
+def ASL_plot_acc(NN1, NN2, y_lim):
+    plt.plot(NN1.batches, NN1.test_accuracy, label="$\epsilon = 1$")
+    plt.plot(NN2.batches, NN2.test_accuracy, label="$\epsilon = 3$")
+    plt.xlabel("batches")
+    plt.ylabel("test accuracy")
+    plt.ylim(y_lim)
+    plt.legend()
+    #plt.title("test accuracy")
     plt.show()
 
 
