@@ -451,23 +451,24 @@ def ASL_plot_acc(NN1, NN2, y_lim):
     plt.show()
 
 
-def plot_shifts(NN):
-    i = 1
+def plot_shifts(NN, rows, columns, size):
+    k = 1
+    i = 0
+    j = 0
+    fig, ax = plt.subplots(rows, columns, figsize=(size), sharex=True, sharey=True)
     for layer in NN.NN:
         if isinstance(layer, CSC_block):
-            initial_shifts = layer.NN[3].initial.detach().to("cpu").numpy()
             shifts = layer.NN[3].shifts.detach().to("cpu").numpy()
-            plt.scatter(initial_shifts[:, 0], initial_shifts[:, 1])
-            plt.xlabel("pixelshift x")
-            plt.ylabel("pixelshift y")
-            plt.title(f"initial shifts ASL-layer {i}")
-            plt.show()
-            plt.scatter(shifts[:, 0], shifts[:, 1])
-            plt.xlabel("pixelshift x")
-            plt.ylabel("pixelshift y")
-            plt.title(f"final shifts ASL-layer {i}")
-            plt.show()
-            i += 1
+            ax[i, j].scatter(shifts[:, 0], shifts[:, 1])
+            ax[i, j].set_title(f"ASL-layer {k}")  
+            if j == 2:          
+                i += 1
+            j = (j + 1) % columns
+            k = k + 1
+    ax[-1, -1].axis("off")
+    plt.ylim((-1.25, 1.25))
+    plt.xlim((-1.25, 1.25))
+    plt.show()
 
 
 def plot_GPmodel(optimizer, axis_1, axis_2, axis_3, axis_3_value, elevation=30, azim=-60):

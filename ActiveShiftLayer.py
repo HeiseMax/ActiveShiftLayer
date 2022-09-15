@@ -9,6 +9,7 @@ def shift_img(img, s, device):
     ''' img shape : (1,1,h,w)
         s   shape : (1,2)
     '''
+    s = s.to(device)
     frac = (s - s.type(torch.int32)).to(device)
     frac = frac[0]
     s_neg = torch.floor((frac - torch.abs(frac))/2).to(device)
@@ -142,7 +143,7 @@ class CSC_block(Module):
         return x
 
 
-class CSC_block_res2(Module):
+class CSC_block_res2(Module): # res2
     '''Convolution-Shift-Convolution'''
 
     def __init__(self, input_size, output_size, expansion_rate, device="cpu"):
@@ -174,7 +175,7 @@ class CSC_block_res2(Module):
         return x
 
 
-class CSC_block_res3(Module):
+class CSC_block_res3(Module): # res3
     '''Convolution-Shift-Convolution'''
 
     def __init__(self, input_size, output_size, expansion_rate, device="cpu"):
