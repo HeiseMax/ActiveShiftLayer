@@ -257,7 +257,6 @@ class U_Net(Module):
     def contracting_block(self, size_in, size_out, kernel):
         block = Sequential(Conv2d(size_in, size_out, kernel, padding="same"),
                            ReLU(),
-                           # TODO swap relu and batchnorm
                            BatchNorm2d(size_out),
                            Conv2d(size_out, size_out, kernel, padding="same"),
                            ReLU(),
