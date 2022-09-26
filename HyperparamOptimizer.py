@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 import sobol
 import optunity
@@ -70,9 +69,6 @@ class HyperparamOptimizer():
             else:
                 pars, details, _ = optunity.maximize(
                     self.maxVarGP, **self.parameter_range)
-
-            # q = np.array([pars['lr'], pars['momentum'],
-            #              pars["p_randomTransform"]])
 
             q = np.array([pars[i] for i in pars])
 

@@ -11,8 +11,8 @@ from torchvision import transforms
 
 from ActiveShiftLayer import CSC_block
 
-# Util for LeNet and VGG
 
+############## train and loss function for LeNet and VGG ##############
 
 def test_loss(NN, test_dataloader, criterion, device):
     correct = 0
@@ -119,7 +119,7 @@ def train_NN(NN, criterion, train_dataloader, test_dataloader, epochs, batches_t
     NN.lr = optimizer.state_dict()["param_groups"][0]["lr"]
 
 
-# Util for U-Net
+############## train and loss function for U-Net ##############
 
 def test_loss_Unet(NN, test_dataloader, criterion, device):
     correct = 0
@@ -193,7 +193,7 @@ def train_U_NET(NN, criterion, train_dataloader, test_dataloader, epochs, batche
 
             transformInput = torch.cat((inputs, labels), dim=1)
 
-            # seems to apply same transformations for all images in batch
+            # applys same transformations for all images in batch
             transformInput = randomApl(transformInput)
 
             inputs, labels = torch.split(
@@ -249,60 +249,7 @@ def train_U_NET(NN, criterion, train_dataloader, test_dataloader, epochs, batche
     NN.lr = optimizer.state_dict()["param_groups"][0]["lr"]
 
 
-def train_U_NET_old(NN, train_dataloader, test_dataloader, epochs, optimizer, criterion, scheduler, device, steps_to_test, print_test=True):
-    for epoch in range(epochs):  # loop over the dataset multiple times
-        ex_time_start = time.process_time_ns()
-        running_loss = 0.0
-
-        for i, data in enumerate(train_dataloader, 0):
-            NN.train()
-            # get the inputs; data is a list of [inputs, labels]
-            inputs, labels = data
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-
-            # zero the parameter gradients
-            optimizer.zero_grad()
-
-            # forward + backward + optimize
-            outputs = NN(inputs)
-            outputs = torch.permute(outputs, (0, 2, 3, 1))
-            batch_size = outputs.size()[0]
-            outputs = outputs.reshape(batch_size*256*256, 3)
-
-            labels = labels.reshape(batch_size*256*256)
-            labels = labels.to(torch.long)
-
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-
-            # print statistics
-            running_loss += loss.item()
-            if i % steps_to_test == steps_to_test - 1:    # print every steps_to_test mini-batches
-                test_time_start = time.process_time_ns()
-                train_loss = running_loss / steps_to_test
-                current_test_loss, test_accuracy = test_loss_Unet(
-                    NN, test_dataloader, criterion, device)
-                NN.train_loss.append(train_loss)
-                NN.test_loss.append(current_test_loss)
-                NN.test_accuracy.append(test_accuracy)
-                if print_test:
-                    print(
-                        f'[{epoch + 1}, {i + 1:5d}] train_loss: {train_loss:.3f}')
-                    print(
-                        f'test_loss: {current_test_loss:.3f}, test_accuracy: {test_accuracy}')
-                running_loss = 0.0
-                NN.train()
-                test_time_end = time.process_time_ns()
-        scheduler.step()
-        ex_time_end = time.process_time_ns()
-        ex_time = (ex_time_end - ex_time_start -
-                   (test_time_end - test_time_start)) * 1e-9
-        NN.train_time.append(ex_time)
-
-# Load Datasets
-
+############## Load Datasets ##############
 
 def loadMNIST(batch_size):
     # transform images into normalized tensors
@@ -367,8 +314,8 @@ def loadCIFAR10(batch_size):
 
     return train_dataset, train_dataloader, test_dataset, test_dataloader, classes
 
-# Stats
 
+############## Stats ##############
 
 def inference_time(NN, input_shape, repetitions, device, warmup_rep=10):
     NN.eval()
@@ -405,8 +352,8 @@ def inference_time(NN, input_shape, repetitions, device, warmup_rep=10):
                 timings[rep] = (stop_time - start_time) * 1e-6
     return timings
 
-# Plot
 
+############## Plots ##############
 
 def plot_loss(NN, y_lim):
     plt.plot(NN.batches, NN.train_loss, label="train_loss")
@@ -415,7 +362,7 @@ def plot_loss(NN, y_lim):
     plt.ylim((y_lim))
     plt.xlabel("batches")
     plt.ylabel("cross entropy loss")
-    #plt.title("loss")
+    # plt.title("loss")
     plt.show()
 
 
@@ -427,6 +374,7 @@ def plot_acc(NN, y_lim):
     #plt.title("test accuracy")
     plt.show()
 
+
 def ASL_plot_loss(NN1, NN2, y_lim):
     plt.plot(NN1.batches, NN1.train_loss, label="train_loss ($\epsilon = 1$)")
     plt.plot(NN1.batches, NN1.test_loss, label="test_loss ($\epsilon = 1$)")
@@ -436,7 +384,7 @@ def ASL_plot_loss(NN1, NN2, y_lim):
     plt.ylim((y_lim))
     plt.xlabel("batches")
     plt.ylabel("cross entropy loss")
-    #plt.title("loss")
+    # plt.title("loss")
     plt.show()
 
 
@@ -455,13 +403,14 @@ def plot_shifts(NN, rows, columns, size):
     k = 1
     i = 0
     j = 0
-    fig, ax = plt.subplots(rows, columns, figsize=(size), sharex=True, sharey=True)
+    fig, ax = plt.subplots(rows, columns, figsize=(size),
+                           sharex=True, sharey=True)
     for layer in NN.NN:
         if isinstance(layer, CSC_block):
             shifts = layer.NN[3].shifts.detach().to("cpu").numpy()
             ax[i, j].scatter(shifts[:, 0], shifts[:, 1])
-            ax[i, j].set_title(f"ASL-layer {k}")  
-            if j == 2:          
+            ax[i, j].set_title(f"ASL-layer {k}")
+            if j == 2:
                 i += 1
             j = (j + 1) % columns
             k = k + 1

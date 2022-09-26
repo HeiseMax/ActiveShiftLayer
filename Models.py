@@ -1,9 +1,9 @@
 import torch
 from torch.nn import Module, Sequential, Conv2d, MaxPool2d, Dropout2d, ReLU, Flatten, Linear, BatchNorm2d, AvgPool2d, Sigmoid, Tanh, Softmax, Dropout, ConvTranspose2d, ModuleDict
-from ActiveShiftLayer import ASL, Convolution, CSC_block, Depth_wise_block
+from ActiveShiftLayer import ASL, CSC_block, Depth_wise_block
 
 
-# LeNet
+############## LeNet ##############
 
 class LeNet(Module):
 
@@ -137,7 +137,7 @@ class LeDepthNet(Module):
         return self.NN.forward(x)
 
 
-# VGG (Visual Geometry Group)
+############## VGG (Visual Geometry Group) ##############
 
 class VGGNet(Module):
     def __init__(self, input_shape, num_labels, initial_lr, momentum, weight_decay, p_drop=0.2):
@@ -251,7 +251,7 @@ class ASL_VGGNet(Module):
         return self.NN.forward(x)
 
 
-# U-Net
+############## U-Net ##############
 
 class U_Net(Module):
     def contracting_block(self, size_in, size_out, kernel):
@@ -430,8 +430,7 @@ class U_Net_ASL(Module):
         return final
 
 
-# Other
-
+############## Other Networks (not used in any test) ##############
 
 class Cifar10_Conv_Net(Module):
     def __init__(self, input_shape, num_labels, device="cpu"):
@@ -613,32 +612,6 @@ class MNIST_conv_Net(Module):
                              BatchNorm2d(32),
                              ReLU(),
                              Conv2d(32, 32, 5, padding="same"),
-                             BatchNorm2d(32),
-                             ReLU(),
-                             AvgPool2d(7),
-                             Flatten(),
-                             Linear(4 * 4 * 32, num_labels)
-                             )
-
-    def forward(self, x):
-        return self.NN.forward(x)
-
-
-class MNIST_ownconv_Net(Module):
-
-    def __init__(self, input_shape, num_labels, device="cpu"):
-        '''input_shape: tuple (batch_size, channels, x_pixels, y_pixels)'''
-        super().__init__()
-
-        self.NN = Sequential(Convolution(input_shape[1], 32, 1, device=device),
-                             BatchNorm2d(32),
-                             ReLU(),
-                             Convolution(32, 32, 3, padding="same",
-                                         device=device),
-                             BatchNorm2d(32),
-                             ReLU(),
-                             Convolution(32, 32, 5, padding="same",
-                                         device=device),
                              BatchNorm2d(32),
                              ReLU(),
                              AvgPool2d(7),
